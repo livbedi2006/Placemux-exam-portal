@@ -193,4 +193,4 @@ def run_simulation():
 
 
 if __name__ == "__main__":
-    run_simulation()uvicorn api:app --host 127.0.0.1 --port 8010 --reload
+    run_simulation()
