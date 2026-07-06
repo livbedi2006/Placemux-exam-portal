@@ -1,0 +1,88 @@
+{
+  "camera": {
+    "index": 0,
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "yolo": {
+    "model": "yolov8n.pt",
+    "confidence_threshold": 0.5,
+    "iou_threshold": 0.45
+  },
+  "mediapipe": {
+    "model_selection": 0,
+    "min_detection_confidence": 0.5,
+    "min_tracking_confidence": 0.5
+  },
+  "face_mesh": {
+    "min_detection_confidence": 0.5,
+    "min_tracking_confidence": 0.5,
+    "gaze_threshold": 0.3,
+    "lip_movement_threshold": 0.02,
+    "enable_gaze_detection": true,
+    "enable_lip_detection": true
+  },
+  "audio": {
+    "enabled": true,
+    "speech_threshold": 0.02,
+    "sample_rate": 44100,
+    "channels": 1
+  },
+  "detection": {
+    "max_faces_allowed": 1,
+    "enable_object_detection": true,
+    "enable_face_detection": true
+  },
+  "prohibited_objects": {
+    "cell phone": {
+      "color": [0, 0, 255],
+      "severity": "high",
+      "enabled": true
+    },
+    "tv": {
+      "color": [0, 0, 255],
+      "severity": "high",
+      "enabled": true
+    },
+    "laptop": {
+      "color": [0, 165, 255],
+      "severity": "medium",
+      "enabled": true
+    },
+    "remote": {
+      "color": [0, 165, 255],
+      "severity": "medium",
+      "enabled": true
+    },
+    "book": {
+      "color": [0, 255, 255],
+      "severity": "low",
+      "enabled": true
+    },
+    "keyboard": {
+      "color": [0, 165, 255],
+      "severity": "medium",
+      "enabled": true
+    },
+    "mouse": {
+      "color": [0, 165, 255],
+      "severity": "medium",
+      "enabled": true
+    }
+  },
+  "output": {
+    "display": true,
+    "save_video": false,
+    "video_path": "output.mp4",
+    "save_report": true,
+    "report_path": "violation_report.json",
+    "save_violation_frames": true,
+    "violation_frames_path": "violation_frames"
+  },
+  "alerts": {
+    "enable_sound": false,
+    "enable_logging": true,
+    "log_path": "proctoring.log"
+  }
+}
