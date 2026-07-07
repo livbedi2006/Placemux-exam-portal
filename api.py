@@ -10,7 +10,6 @@ Then visit https://wobbly-rut-sanctuary.ngrok-free.dev/docs to try it interactiv
 import joblib
 import numpy as np
 import pandas as pd
-import uuid
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,7 +39,7 @@ print("Loading question bank for adaptive testing...")
 QUESTIONS_DF = pd.read_csv("data/clean_questions.csv")
 
 # In-memory storage for ongoing test sessions.
-# Key = session_id, Value = AdaptiveTest object tracking that student's progress.
+# Key = email, Value = AdaptiveTest object tracking that student's progress.
 # NOTE: this resets if the server restarts -- fine for learning/demo purposes,
 # a real production system would use a database instead.
 ACTIVE_SESSIONS = {}
@@ -59,6 +58,7 @@ class DifficultyResponse(BaseModel):
 
 
 class StartTestRequest(BaseModel):
+    email: str
     domain: str
     start_band: str = "Intermediate"
 
@@ -74,12 +74,12 @@ class QuestionOut(BaseModel):
 
 
 class StartTestResponse(BaseModel):
-    session_id: str
+    email: str
     question: QuestionOut
 
 
 class SubmitAnswerRequest(BaseModel):
-    session_id: str
+    email: str
     answer: str  # "a", "b", "c", or "d"
 
 
@@ -133,6 +133,8 @@ def _question_row_to_out(row, band: str) -> QuestionOut:
 
 @app.post("/start_test", response_model=StartTestResponse)
 def start_test(request: StartTestRequest):
+    email = request.email.strip().lower()
+
     try:
         test = AdaptiveTest(QUESTIONS_DF, domain=request.domain, start_band=request.start_band)
     except ValueError as e:
@@ -142,18 +144,17 @@ def start_test(request: StartTestRequest):
     if first_question is None:
         raise HTTPException(status_code=404, detail="No questions available for this domain/band.")
 
-    session_id = str(uuid.uuid4())
-    ACTIVE_SESSIONS[session_id] = test
+    ACTIVE_SESSIONS[email] = test
 
     return StartTestResponse(
-        session_id=session_id,
+        email=email,
         question=_question_row_to_out(first_question, test.current_band),
     )
 
 
-@app.get("/get_report/{session_id}")
-def get_report(session_id: str):
-    test = ACTIVE_SESSIONS.get(session_id)
+@app.get("/get_report/{email}")
+def get_report(email: str):
+    test = ACTIVE_SESSIONS.get(email.strip().lower())
     if test is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     return calculate_report(test)
@@ -161,7 +162,8 @@ def get_report(session_id: str):
 
 @app.post("/submit_answer", response_model=SubmitAnswerResponse)
 def submit_answer(request: SubmitAnswerRequest):
-    test = ACTIVE_SESSIONS.get(request.session_id)
+    email = request.email.strip().lower()
+    test = ACTIVE_SESSIONS.get(email)
     if test is None:
         raise HTTPException(status_code=404, detail="Session not found. Did you call /start_test first?")
 
