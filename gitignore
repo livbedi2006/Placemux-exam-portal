@@ -14,3 +14,9 @@ __pycache__/
 # OS junk files
 .DS_Store
 Thumbs.db
+
+# Proctoring runtime outputs
+violation_report.json
+output.mp4
+violation_frames/
+*.pt
