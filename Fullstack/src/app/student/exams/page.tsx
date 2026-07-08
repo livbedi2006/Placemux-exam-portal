@@ -61,6 +61,16 @@ export default function ExamsPage() {
     return `Starts in ${diffHours}h ${diffMins}m`;
   };
 
+  const formatExamStart = (startTimeStr: string) => {
+    const start = new Date(startTimeStr);
+    const day = start.getDate();
+    const monthShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][start.getMonth()];
+    const hours = start.getHours();
+    const mins = start.getMinutes();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${day} ${monthShort}, ${pad(hours)}:${pad(mins)}`;
+  };
+
   const filteredExams = mockExamSchedule.filter(exam => {
     const displayStatus = lockedExamIds.includes(exam.id) ? 'completed' : exam.status;
     const matchesFilter = filter === 'all' || displayStatus === filter;
@@ -175,7 +185,7 @@ export default function ExamsPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <Calendar size={14} />
-                      <span>{new Date(exam.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>{formatExamStart(exam.startTime)}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <FileCheck size={14} />

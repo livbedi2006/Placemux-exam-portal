@@ -2,6 +2,7 @@
 import { Bell, Search, Menu, Sun, Moon, Settings, Zap } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import styles from './TopNav.module.css';
+import useAuthUser from '@/lib/useAuth';
 
 interface Props {
   onMenuClick: () => void;
@@ -10,6 +11,13 @@ interface Props {
 
 export function TopNav({ onMenuClick, pageTitle = 'Dashboard' }: Props) {
   const { theme, toggleTheme } = useTheme();
+  const user = useAuthUser();
+  const initials = (() => {
+    const n = user?.name?.trim();
+    if (n) return n.split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+    if (user?.email) return user.email[0].toUpperCase();
+    return 'ST';
+  })();
 
   return (
     <div className={styles.topnav}>
@@ -55,7 +63,7 @@ export function TopNav({ onMenuClick, pageTitle = 'Dashboard' }: Props) {
 
         <div className={styles.divider} />
 
-        <div className={styles.avatar} title="Profile">AS</div>
+        <div className={styles.avatar} title="Profile">{initials}</div>
       </div>
     </div>
   );

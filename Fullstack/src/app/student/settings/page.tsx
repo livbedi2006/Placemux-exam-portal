@@ -1,5 +1,5 @@
-'use client';
-import { useState } from 'react';
+"use client";
+import { useState, useEffect } from 'react';
 import { 
   User, 
   Shield, 
@@ -18,16 +18,35 @@ import {
   Monitor,
   Check
 } from 'lucide-react';
+import useAuthUser from '@/lib/useAuth';
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences'>('profile');
   
   // Profile state
-  const [name, setName] = useState('John Smith');
-  const [email, setEmail] = useState('john.smith@university.edu');
-  const [phone, setPhone] = useState('+1 (555) 019-2834');
-  const [bio, setBio] = useState('Computer Science sophomore student specializing in Artificial Intelligence and Relational DBMS.');
-  const [dept, setDept] = useState('Computer Science');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bio, setBio] = useState('');
+  const [dept, setDept] = useState('N/A');
+  
+  // load from auth
+  const authUser = useAuthUser();
+
+  useEffect(() => {
+    if (authUser) {
+      setName(authUser.name || '');
+      setEmail(authUser.email || '');
+      setDept((authUser as any).department || 'N/A');
+    }
+  }, [authUser]);
+
+  const initials = (() => {
+    const n = authUser?.name?.trim();
+    if (n) return n.split(' ').map((p: string) => p[0]).slice(0,2).join('').toUpperCase();
+    if (authUser?.email) return authUser.email[0].toUpperCase();
+    return 'ST';
+  })();
 
   // Security state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -98,7 +117,7 @@ export default function SettingsPage() {
                 boxShadow: 'var(--shadow-md)',
                 position: 'relative'
               }}>
-                JS
+                {initials}
                 <button 
                   type="button"
                   style={{ 

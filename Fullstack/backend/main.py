@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi import HTTPException, UploadFile, File
+from fastapi.staticfiles import StaticFiles
+from uuid import uuid4
+import json
+from datetime import datetime
+import pathlib
 
 app = FastAPI(
     title="ExamAI Pro - AI Microservice",
@@ -52,6 +58,104 @@ async def rate_limit_middleware(request: Request, call_next):
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------
+# Exam Report Storage (simple file-backed storage)
+# ---------------------------------------------------------
+REPORTS_FILE = os.path.join(os.path.dirname(__file__), 'reports.json')
+REPORTS_DIR = os.path.join(os.path.dirname(__file__), 'reports_files')
+pathlib.Path(REPORTS_DIR).mkdir(exist_ok=True)
+
+def _load_reports():
+    try:
+        if os.path.exists(REPORTS_FILE):
+            with open(REPORTS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        return []
+    return []
+
+def _save_reports(data):
+    with open(REPORTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+class ReportCreate(BaseModel):
+    studentId: str
+    studentName: str
+    department: str | None = None
+    examId: str
+    examName: str
+    subject: str | None = None
+    timeTakenSec: int
+    submittedAt: str
+    totalQuestions: int
+    attempted: int
+    correctAnswers: int
+    wrongAnswers: int
+    skippedAnswers: int
+    marksObtained: float
+    totalMarks: float
+    percentage: float
+    grade: str | None = None
+    passFail: str | None = None
+    topicPerformance: dict | None = None
+    aiFeedback: dict | None = None
+
+class ReportOut(ReportCreate):
+    id: str
+    pdfPath: str | None = None
+
+
+@app.post('/api/reports', response_model=ReportOut)
+def create_report(payload: ReportCreate):
+    reports = _load_reports()
+    rid = str(uuid4())
+    rec = payload.dict()
+    rec.update({
+        'id': rid,
+        'pdfPath': None,
+        'createdAt': datetime.utcnow().isoformat() + 'Z'
+    })
+    reports.append(rec)
+    _save_reports(reports)
+    return rec
+
+
+@app.get('/api/reports')
+def list_reports(studentId: str | None = None):
+    reports = _load_reports()
+    if studentId:
+        reports = [r for r in reports if r.get('studentId') == studentId]
+    return {'status': 'success', 'count': len(reports), 'reports': reports}
+
+
+@app.get('/api/reports/{report_id}')
+def get_report(report_id: str):
+    reports = _load_reports()
+    for r in reports:
+        if r.get('id') == report_id:
+            return r
+    raise HTTPException(status_code=404, detail='Report not found')
+
+
+@app.post('/api/reports/{report_id}/pdf')
+def upload_report_pdf(report_id: str, file: UploadFile = File(...)):
+    reports = _load_reports()
+    for r in reports:
+        if r.get('id') == report_id:
+            filename = f"report-{report_id}.pdf"
+            out_path = os.path.join(REPORTS_DIR, filename)
+            with open(out_path, 'wb') as f:
+                f.write(file.file.read())
+            r['pdfPath'] = f'/reports_files/{filename}'
+            _save_reports(reports)
+            return {'status': 'success', 'pdfPath': r['pdfPath']}
+    raise HTTPException(status_code=404, detail='Report not found')
+
+
+# Serve saved report files
+app.mount('/reports_files', StaticFiles(directory=REPORTS_DIR), name='reports_files')
 
 # Placeholder for AI Recommendation Endpoint
 class StudentProfile(BaseModel):

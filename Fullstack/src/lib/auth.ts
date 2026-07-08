@@ -79,6 +79,12 @@ export const clearPendingVerification = () => {
 export const saveAuthUser = (user: AuthUser) => {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  try {
+    // Notify in-app listeners that auth changed so UI can update immediately
+    window.dispatchEvent(new CustomEvent('auth:changed', { detail: user }));
+  } catch (e) {
+    // ignore
+  }
 };
 
 export const getStoredAuthUser = (): AuthUser | null => {
@@ -95,6 +101,11 @@ export const getStoredAuthUser = (): AuthUser | null => {
 export const clearAuthUser = () => {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  try {
+    window.dispatchEvent(new CustomEvent('auth:changed', { detail: null }));
+  } catch (e) {
+    // ignore
+  }
 };
 
 export const signInWithSocialProvider = async (
@@ -106,10 +117,20 @@ export const signInWithSocialProvider = async (
   const label = provider === 'google' ? 'Google' : 'Microsoft';
   const defaultEmail = `${role === 'faculty' ? 'faculty' : role === 'admin' ? 'admin' : 'student'}@examai.local`;
 
-  const email = window.prompt(`Enter your ${label} email to continue`, defaultEmail);
-  if (!email?.trim()) return null;
+  let email: string | null = null;
+  let name: string | null = null;
 
-  const name = window.prompt('Enter your display name', email.split('@')[0] || 'Student');
+  try {
+    if (typeof window.prompt !== 'function') return null;
+    email = window.prompt(`Enter your ${label} email to continue`, defaultEmail);
+    if (!email?.trim()) return null;
+
+    name = window.prompt('Enter your display name', email.split('@')[0] || 'Student');
+  } catch (e) {
+    // Some modern environments (or strict browser settings) disallow prompt();
+    // fail gracefully and let the caller handle the null return.
+    return null;
+  }
 
   const user: AuthUser = {
     id: `${provider}-${Date.now()}`,

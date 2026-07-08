@@ -7,6 +7,7 @@ import {
   Zap, Target, Award, ChevronLeft, ChevronRight, LogOut
 } from 'lucide-react';
 import styles from './Sidebar.module.css';
+import useAuthUser from '@/lib/useAuth';
 
 interface NavItem {
   icon: React.ElementType;
@@ -99,6 +100,18 @@ interface SidebarProps {
 export function Sidebar({ role = 'student', collapsed, onToggle, onClose, showOverlay }: SidebarProps) {
   const pathname = usePathname();
   const currentNav = navSections[role];
+  const user = useAuthUser();
+
+  const displayName = user?.name || 'Student';
+  const email = user?.email || 'N/A';
+  const dept = (user as any)?.department || 'N/A';
+  const studentId = user?.id || 'N/A';
+  const initials = (() => {
+    const n = user?.name?.trim();
+    if (n) return n.split(' ').map(p => p[0]).slice(0,2).join('').toUpperCase();
+    if (email && email !== 'N/A') return email[0].toUpperCase();
+    return role === 'admin' ? 'AD' : role === 'faculty' ? 'FA' : 'ST';
+  })();
 
   return (
     <>
@@ -145,11 +158,13 @@ export function Sidebar({ role = 'student', collapsed, onToggle, onClose, showOv
         {/* User Footer */}
         <div className={styles.footer}>
           <div className={styles.userCard}>
-            <div className={styles.avatarFallback}>{role === 'admin' ? 'AD' : role === 'faculty' ? 'FA' : 'AS'}</div>
+            <div className={styles.avatarFallback}>{initials}</div>
             {!collapsed && (
               <div className={styles.userInfo}>
-                <div className={styles.userName}>{role === 'admin' ? 'System Admin' : role === 'faculty' ? 'Dr. Faculty' : 'Alex Smith'}</div>
-                <div className={styles.userRole}>{role === 'admin' ? 'Super Admin' : role === 'faculty' ? 'Computer Science' : 'Student • CS Dept'}</div>
+                <div className={styles.userName}>{displayName}</div>
+                <div className={styles.userRole}>{`${user?.role === 'admin' ? 'Super Admin' : user?.role === 'faculty' ? 'Faculty' : 'Student'} • ${dept}`}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>{email}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)' }}>ID: {studentId}</div>
               </div>
             )}
             {!collapsed && (

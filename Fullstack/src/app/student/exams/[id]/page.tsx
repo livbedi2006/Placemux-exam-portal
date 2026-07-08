@@ -10,6 +10,9 @@ import {
   ChevronRight, ChevronLeft, Flag, Save, CheckCircle
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import { getStoredAuthUser } from '@/lib/auth';
+import { updateStreakOnActivity } from '@/lib/streak';
+import { createReport } from '@/lib/reports';
 
 export default function ExamTakingInterface() {
   const params = useParams();
@@ -21,6 +24,7 @@ export default function ExamTakingInterface() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [flagged, setFlagged] = useState<Record<number, boolean>>({});
+  const [visited, setVisited] = useState<Record<number, boolean>>({});
   const [proctoringWarnings, setProctoringWarnings] = useState(0);
   const [proctoringStatus, setProctoringStatus] = useState<string>("Camera Off");
   const [latestViolation, setLatestViolation] = useState<string>("No issues detected");
@@ -218,11 +222,99 @@ export default function ExamTakingInterface() {
   };
 
   const handleSelectOption = (opt: string) => {
-    setAnswers(prev => ({ ...prev, [currentQuestion]: opt }));
+    setAnswers(prev => {
+      const next = { ...prev, [currentQuestion]: opt };
+      try { localStorage.setItem(`exam-${examId}-answers`, JSON.stringify(next)); } catch {}
+      return next;
+    });
   };
 
   const toggleFlag = () => {
-    setFlagged(prev => ({ ...prev, [currentQuestion]: !prev[currentQuestion] }));
+    setFlagged(prev => {
+      const next = { ...prev, [currentQuestion]: !prev[currentQuestion] };
+      try { localStorage.setItem(`exam-${examId}-flags`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  const saveCurrentAnswer = () => {
+    try { localStorage.setItem(`exam-${examId}-answers`, JSON.stringify(answers)); } catch {}
+    try {
+      const user = getStoredAuthUser();
+      if (user) updateStreakOnActivity(user.id);
+    } catch {}
+  };
+
+  const saveAndNext = () => {
+    saveCurrentAnswer();
+    // mark as answered implicitly by having an entry in answers
+    if (currentQuestion < questions.length - 1) {
+      const nextIndex = currentQuestion + 1;
+      setCurrentQuestion(nextIndex);
+      setVisited(prev => { const n = { ...prev, [nextIndex]: true }; try { localStorage.setItem(`exam-${examId}-visited`, JSON.stringify(n)); } catch {} return n; });
+    }
+  };
+
+  const markForReviewAndNext = () => {
+    setFlagged(prev => { const n = { ...prev, [currentQuestion]: true }; try { localStorage.setItem(`exam-${examId}-flags`, JSON.stringify(n)); } catch {} return n; });
+    saveCurrentAnswer();
+    try {
+      const user = getStoredAuthUser();
+      if (user) updateStreakOnActivity(user.id);
+    } catch {}
+    if (currentQuestion < questions.length - 1) {
+      const nextIndex = currentQuestion + 1;
+      setCurrentQuestion(nextIndex);
+      setVisited(prev => { const n = { ...prev, [nextIndex]: true }; try { localStorage.setItem(`exam-${examId}-visited`, JSON.stringify(n)); } catch {} return n; });
+    }
+  };
+
+  const clearResponse = () => {
+    setAnswers(prev => {
+      const copy = { ...prev };
+      delete copy[currentQuestion];
+      try { localStorage.setItem(`exam-${examId}-answers`, JSON.stringify(copy)); } catch {}
+      return copy;
+    });
+  };
+
+  // When a user selects an option we persist immediately and count activity once per day
+  const handleSelectOptionWithActivity = (opt: string) => {
+    handleSelectOption(opt);
+    try {
+      const user = getStoredAuthUser();
+      if (user) updateStreakOnActivity(user.id);
+    } catch {}
+  };
+
+  const goNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      const nextIndex = currentQuestion + 1;
+      setCurrentQuestion(nextIndex);
+      setVisited(prev => { const n = { ...prev, [nextIndex]: true }; try { localStorage.setItem(`exam-${examId}-visited`, JSON.stringify(n)); } catch {} return n; });
+    }
+  };
+
+  const goPrevious = () => {
+    if (currentQuestion > 0) {
+      const prevIndex = currentQuestion - 1;
+      setCurrentQuestion(prevIndex);
+      setVisited(prev => { const n = { ...prev, [prevIndex]: true }; try { localStorage.setItem(`exam-${examId}-visited`, JSON.stringify(n)); } catch {} return n; });
+    }
+  };
+
+  const handleSubmitConfirm = () => {
+    const total = questions.length;
+    const answered = Object.keys(answers).length;
+    const markedForReview = Object.values(flagged).filter(Boolean).length;
+    const visitedCount = Object.keys(visited).length;
+    const unvisited = total - visitedCount;
+    const notAnswered = Math.max(0, visitedCount - answered);
+
+    const msg = `Submit Exam?\n\nTotal Questions: ${total}\nAnswered: ${answered}\nNot Answered: ${notAnswered}\nMarked for Review: ${markedForReview}\nUnvisited: ${unvisited}\n\nProceed to submit?`;
+    if (window.confirm(msg)) {
+      handleSubmitExam();
+    }
   };
 
   const formatTime = (sec: number) => {
@@ -237,10 +329,74 @@ export default function ExamTakingInterface() {
     if (stored.includes(String(examId))) {
       setIsSubmitted(true);
     }
+
+    // Load persisted answers/flags/visited for resumed attempts
+    try {
+      const savedAnswers = JSON.parse(localStorage.getItem(`exam-${examId}-answers`) || '{}');
+      const savedFlags = JSON.parse(localStorage.getItem(`exam-${examId}-flags`) || '{}');
+      const savedVisited = JSON.parse(localStorage.getItem(`exam-${examId}-visited`) || '{}');
+      if (savedAnswers && Object.keys(savedAnswers).length) setAnswers(savedAnswers);
+      if (savedFlags && Object.keys(savedFlags).length) setFlagged(savedFlags);
+      if (savedVisited && Object.keys(savedVisited).length) setVisited(savedVisited);
+      // ensure question 0 marked visited by default
+      if (!savedVisited || Object.keys(savedVisited).length === 0) {
+        setVisited({ 0: true });
+        localStorage.setItem(`exam-${examId}-visited`, JSON.stringify({ 0: true }));
+      }
+    } catch (e) {
+      // ignore
+    }
   }, [examId]);
 
   const handleSubmitExam = () => {
     if (isSubmitted) return;
+
+    try {
+      const user = getStoredAuthUser();
+      if (user) updateStreakOnActivity(user.id);
+    } catch {}
+
+    // Build a basic report summary
+    try {
+      const user = getStoredAuthUser();
+      const total = questions.length;
+      const attempted = Object.keys(answers).length;
+      const skipped = total - attempted;
+      const wrong = 0; // without answer key we cannot grade; treat as unknown
+      const correct = attempted - wrong;
+      const totalMarks = total * 1;
+      const marksObtained = correct * 1;
+      const percentage = totalMarks > 0 ? (marksObtained / totalMarks) * 100 : 0;
+
+      if (user) {
+        const payload = {
+          studentId: user.id,
+          studentName: user.name,
+          department: (user as any).department || null,
+          examId: String(examId),
+          examName: `Exam ${examId}`,
+          subject: null,
+          timeTakenSec: 3600 - timeLeft,
+          submittedAt: new Date().toISOString(),
+          totalQuestions: total,
+          attempted,
+          correctAnswers: correct,
+          wrongAnswers: wrong,
+          skippedAnswers: skipped,
+          marksObtained,
+          totalMarks,
+          percentage,
+          grade: null,
+          passFail: null,
+          topicPerformance: {},
+          aiFeedback: {},
+        };
+
+        createReport(payload).catch(err => console.error('createReport failed', err));
+      }
+    } catch (e) {
+      console.error('report creation error', e);
+    }
 
     markExamCompleted();
     alert('Exam submitted successfully. You can no longer attempt this exam again.');
@@ -339,7 +495,7 @@ export default function ExamTakingInterface() {
                         key={idx}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        onClick={() => handleSelectOption(opt)}
+                        onClick={() => handleSelectOptionWithActivity(opt)}
                         className={`p-4 border rounded-2xl cursor-pointer transition-all duration-200 flex items-center gap-4 ${
                           isSelected 
                             ? 'border-blue-600 bg-blue-50/80 shadow-sm' 
@@ -363,25 +519,33 @@ export default function ExamTakingInterface() {
             
             {/* Action Bar */}
             <div className="p-4 border-t bg-slate-50/80 flex justify-between items-center">
-              <Button variant="outline" onClick={toggleFlag} className={flagged[currentQuestion] ? "border-orange-400 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-full" : "rounded-full"}>
-                <Flag className="w-4 h-4 mr-2" />
-                {flagged[currentQuestion] ? "Unflag" : "Mark for Review"}
-              </Button>
-              
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setCurrentQuestion(p => Math.max(0, p - 1))} disabled={currentQuestion === 0} className="rounded-full">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={goPrevious} disabled={currentQuestion === 0} className="rounded-full">
                   <ChevronLeft className="w-4 h-4 mr-2" />
                   Previous
                 </Button>
+
+                <Button variant="outline" onClick={toggleFlag} className={flagged[currentQuestion] ? "border-orange-400 text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-full" : "rounded-full"}>
+                  <Flag className="w-4 h-4 mr-2" />
+                  {flagged[currentQuestion] ? "Unflag" : "Mark for Review"}
+                </Button>
+              </div>
+
+              <div className="flex gap-3 items-center">
+                <Button variant="outline" onClick={saveCurrentAnswer} className="rounded-full">💾 Save Answer</Button>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full" onClick={saveAndNext}>✔ Save & Next</Button>
+                <Button variant="outline" onClick={markForReviewAndNext} className="rounded-full">⭐ Mark for Review & Next</Button>
+                <Button variant="ghost" onClick={clearResponse} className="rounded-full">❌ Clear Response</Button>
+
                 {currentQuestion < questions.length - 1 ? (
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full" onClick={() => setCurrentQuestion(p => p + 1)}>
-                    Save & Next
+                  <Button className="bg-slate-700 hover:bg-slate-800 text-white rounded-full" onClick={goNext}>
+                    Next
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button className="bg-green-600 hover:bg-green-700 text-white rounded-full" onClick={handleSubmitExam}>
+                  <Button className="bg-green-600 hover:bg-green-700 text-white rounded-full" onClick={handleSubmitConfirm}>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Submit Final
+                    Submit Exam
                   </Button>
                 )}
               </div>
@@ -441,7 +605,10 @@ export default function ExamTakingInterface() {
                   return (
                     <button
                       key={i}
-                      onClick={() => setCurrentQuestion(i)}
+                      onClick={() => {
+                        setCurrentQuestion(i);
+                        setVisited(prev => { const n = { ...prev, [i]: true }; try { localStorage.setItem(`exam-${examId}-visited`, JSON.stringify(n)); } catch {} return n; });
+                      }}
                       className={`h-12 rounded-lg border flex items-center justify-center font-medium transition-all ${bgColor}`}
                     >
                       {i + 1}

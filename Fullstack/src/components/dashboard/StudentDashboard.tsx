@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadialBarChart, RadialBar
@@ -10,6 +10,8 @@ import {
   Users, FileText, BarChart2, Trophy, Sparkles, Rocket
 } from 'lucide-react';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
+import useAuthUser from '@/lib/useAuth';
+import { getStreak, formatLastActive } from '@/lib/streak';
 import styles from './StudentDashboard.module.css';
 
 // Mock data
@@ -53,7 +55,7 @@ const subjects = [
 const leaderboard = [
   { name: 'Priya Sharma', score: 9840, color: '#f59e0b', isYou: false },
   { name: 'Rahul Gupta', score: 9210, color: '#6366f1', isYou: false },
-  { name: 'Alex Smith', score: 8950, color: '#2563eb', isYou: true },
+  { name: 'You', score: 8950, color: '#2563eb', isYou: true },
   { name: 'Ananya Singh', score: 8720, color: '#ec4899', isYou: false },
   { name: 'Karthik Rao', score: 8500, color: '#10b981', isYou: false },
 ];
@@ -94,6 +96,27 @@ const days = Array.from({ length: 21 }, (_, i) => ({
 export function StudentDashboard() {
   const [chartTab, setChartTab] = useState<'week' | 'month'>('week');
   const chartData = chartTab === 'week' ? weeklyData : monthlyData;
+  const user = useAuthUser();
+  const displayName = user?.name?.trim() ?? null;
+  const [streakRec, setStreakRec] = useState(() => user ? getStreak(user.id) : { currentStreak: 0, longestStreak: 0, lastSolvedDate: null, totalDaysActive: 0 });
+
+  useEffect(() => {
+    const refresh = () => { if (user) setStreakRec(getStreak(user.id)); };
+    refresh();
+    window.addEventListener('streak:changed', refresh as EventListener);
+    window.addEventListener('storage', refresh as EventListener);
+    return () => {
+      window.removeEventListener('streak:changed', refresh as EventListener);
+      window.removeEventListener('storage', refresh as EventListener);
+    };
+  }, [user]);
+
+  const getTimeGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr >= 5 && hr < 12) return 'Good Morning';
+    if (hr >= 12 && hr < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   return (
     <div className={styles.page}>
@@ -102,8 +125,8 @@ export function StudentDashboard() {
         <div className={styles.welcomeBg} />
         <div className={styles.welcomeContent}>
           <div className={styles.welcomeLeft}>
-            <p className={styles.welcomeGreeting}>Good morning 👋</p>
-            <h1 className={styles.welcomeName}>Hello, Alex Smith!</h1>
+            <p className={styles.welcomeGreeting}>👋 {getTimeGreeting()},</p>
+            <h1 className={styles.welcomeName}>Hello, {displayName || 'Student'}!</h1>
             <p className={styles.welcomeQuote}>
               "Success is the sum of small efforts, repeated day in and day out."
             </p>
@@ -127,16 +150,17 @@ export function StudentDashboard() {
           </div>
           <div className={styles.welcomeRight}>
             <div className={styles.welcomeStat}>
-              <span className={styles.welcomeStatValue}>🔥 30</span>
-              <span className={styles.welcomeStatLabel}>Day Streak</span>
+              <span className={styles.welcomeStatValue}>🔥 {streakRec.currentStreak}</span>
+              <span className={styles.welcomeStatLabel}>Current Streak</span>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '0.25rem' }}>{formatLastActive(streakRec.lastSolvedDate)}</div>
             </div>
             <div className={styles.welcomeStat}>
-              <span className={styles.welcomeStatValue}>87%</span>
-              <span className={styles.welcomeStatLabel}>Avg Score</span>
+              <span className={styles.welcomeStatValue}>🏆 {streakRec.longestStreak}</span>
+              <span className={styles.welcomeStatLabel}>Longest Streak</span>
             </div>
             <div className={styles.welcomeStat}>
-              <span className={styles.welcomeStatValue}>#3</span>
-              <span className={styles.welcomeStatLabel}>Rank</span>
+              <span className={styles.welcomeStatValue}>🔥 {streakRec.totalDaysActive}</span>
+              <span className={styles.welcomeStatLabel}>Total Days Active</span>
             </div>
           </div>
         </div>
@@ -303,15 +327,20 @@ export function StudentDashboard() {
             <div className={styles.sectionTitle}><Users size={15} style={{ color: '#8b5cf6' }} /> Leaderboard</div>
             <a className={styles.sectionLink}>Full <ChevronRight size={12} style={{ display: 'inline' }} /></a>
           </div>
-          {leaderboard.map((user, idx) => (
-            <div key={user.name} className={`${styles.leaderItem} ${user.isYou ? styles.you : ''}`}>
+          {leaderboard.map((rowUser, idx) => {
+            const effectiveUser = user && rowUser.isYou ? { ...rowUser, name: user.name } : rowUser;
+            const isYou = effectiveUser.isYou;
+            return (
+            <div key={effectiveUser.name} className={`${styles.leaderItem} ${isYou ? styles.you : ''}`}>
               <span className={`${styles.leaderRank} ${idx === 0 ? styles.gold : idx === 1 ? styles.silver : idx === 2 ? styles.bronze : ''}`}>
                 {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
               </span>
-              <div className={styles.leaderAvatar} style={{ background: user.color }}>{user.name.split(' ').map(n => n[0]).join('')}</div>
-              <div className={styles.leaderName}>{user.isYou ? `${user.name} (You)` : user.name}</div>
-              <div className={styles.leaderScore}>{user.score.toLocaleString()}</div>
+              <div className={styles.leaderAvatar} style={{ background: effectiveUser.color }}>{effectiveUser.name.split(' ').map(n => n[0]).join('')}</div>
+              <div className={styles.leaderName}>{isYou ? `${effectiveUser.name} (You)` : effectiveUser.name}</div>
+              <div className={styles.leaderScore}>{effectiveUser.score.toLocaleString()}</div>
             </div>
+            );
+          })}
           ))}
         </div>
       </div>

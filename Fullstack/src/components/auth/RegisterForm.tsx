@@ -13,6 +13,7 @@ import {
   validateEmailAddress,
   validatePasswordStrength,
 } from '@/lib/auth';
+import SocialSignModal from './SocialSignModal';
 import styles from './AuthForm.module.css';
 
 const roles = [
@@ -32,6 +33,9 @@ export function RegisterForm() {
   const [verificationInput, setVerificationInput] = useState('');
   const [message, setMessage] = useState('');
   const [passwordMeter, setPasswordMeter] = useState(0);
+  const [socialModalOpen, setSocialModalOpen] = useState(false);
+  const [socialModalProvider, setSocialModalProvider] = useState<null | 'google' | 'microsoft'>(null);
+  const [socialModalDefaultEmail, setSocialModalDefaultEmail] = useState<string | undefined>(undefined);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,12 +90,45 @@ export function RegisterForm() {
 
   const handleSocialSignIn = async (provider: 'google' | 'microsoft') => {
     setLoading(true);
-    const user = await signInWithSocialProvider(provider, role as 'student' | 'faculty' | 'admin');
-    setLoading(false);
+    try {
+      const user = await signInWithSocialProvider(provider, role as 'student' | 'faculty' | 'admin');
+      if (user) {
+        router.push('/student');
+        return;
+      }
 
-    if (user) {
-      router.push('/student');
+      // Fallback: open modal to collect email/name when prompt() isn't available
+      const defaultEmail = `${role === 'faculty' ? 'faculty' : role === 'admin' ? 'admin' : 'student'}@examai.local`;
+      setSocialModalProvider(provider);
+      setSocialModalDefaultEmail(defaultEmail);
+      setSocialModalOpen(true);
+    } catch (err) {
+      setMessage('Social sign-in failed. Please try email registration.');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleSocialModalConfirm = (data: { email: string; name: string }) => {
+    if (!validateEmailAddress(data.email)) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+
+    saveAuthUser({
+      id: `social-${Date.now()}`,
+      name: data.name || data.email.split('@')[0],
+      email: data.email,
+      provider: socialModalProvider as 'google' | 'microsoft',
+      role: role as 'student' | 'faculty' | 'admin',
+    });
+
+    setSocialModalOpen(false);
+    router.push('/student');
+  };
+
+  const handleSocialModalCancel = () => {
+    setSocialModalOpen(false);
   };
 
   return (
@@ -145,7 +182,7 @@ export function RegisterForm() {
           <label className={styles.label} htmlFor="reg-name">Full name</label>
           <div className="input-group">
             <User size={16} className="input-icon" />
-            <input id="reg-name" type="text" className="input" placeholder="Alex Smith" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} required />
+            <input id="reg-name" type="text" className="input" placeholder="Full name" value={form.name} onChange={e => setForm(p => ({...p, name: e.target.value}))} required />
           </div>
         </div>
         <div className={styles.field}>
@@ -214,6 +251,8 @@ export function RegisterForm() {
           </div>
         )}
       </form>
+
+      <SocialSignModal open={socialModalOpen} provider={socialModalProvider} defaultEmail={socialModalDefaultEmail} onConfirm={handleSocialModalConfirm} onCancel={handleSocialModalCancel} />
 
       <p className={styles.switchText} style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', textAlign: 'center', marginTop: '0.75rem' }}>
         By signing up, you agree to our <a href="#" style={{ color: 'var(--brand-500)' }}>Terms</a> & <a href="#" style={{ color: 'var(--brand-500)' }}>Privacy Policy</a>
