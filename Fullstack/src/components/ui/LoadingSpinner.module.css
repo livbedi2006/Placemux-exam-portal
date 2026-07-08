@@ -1,0 +1,39 @@
+.wrapper { display: flex; align-items: center; justify-content: center; }
+.spinner { animation: spin 1s linear infinite; transform-origin: center; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.pageLoader {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: var(--bg-base);
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+.logoWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.logoGlow {
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(37,99,235,0.3) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+.logoText {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--brand-500), var(--accent-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+}
+@keyframes pulse { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.1)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
