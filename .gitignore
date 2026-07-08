@@ -1,14 +1,30 @@
 # Virtual environment - never share, it's huge and machine-specific
 venv/
+Fullstack/backend/venv/
+Fullstack/backend/.venv/
+
+# Frontend build and install artifacts
+Fullstack/.next/
+Fullstack/node_modules/
+Fullstack/.turbo/
+Fullstack/.swc/
+
+# Database and local runtime data
+Fullstack/backend/chroma_db/
+Fullstack/dev.db
 
 # Real question data - private, not cleared for public sharing
 data/
 
 # Trained model files - large binaries, regenerate locally instead
 models/
+*.pkl
+*.joblib
 
 # Large model weights - not meant for git
 *.pt
+*.onnx
+*.bin
 
 # Environment variables / secrets
 .env

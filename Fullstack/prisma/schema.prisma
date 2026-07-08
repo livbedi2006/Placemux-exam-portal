@@ -1,0 +1,461 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 1. Users, Roles, and Permissions
+// ==========================================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  examsCreated     Exam[]            @relation("FacultyExams")
+  results          Result[]
+  proctoringLogs   ProctoringLog[]
+  learningHistory  LearningHistory[]
+  bookmarks        Bookmark[]
+  notes            Note[]
+  xpHistory        XPHistory[]
+  badges           UserBadge[]
+  certificates     Certificate[]
+  notifications    Notification[]
+  messagesSent     Message[]         @relation("MessagesSent")
+  messagesReceived Message[]         @relation("MessagesReceived")
+  feedback         Feedback[]
+  loginHistory     LoginHistory[]
+  deviceHistory    DeviceHistory[]
+  auditLogs        AuditLog[]        @relation("UserAuditLogs")
+  examAttempts     ExamAttempt[]
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  action      String  @unique // e.g., "CREATE_EXAM", "MANAGE_USERS"
+  description String?
+
+  // implicit many-to-many is fine but let's just make it simple if we want explicit Role matching
+  // Usually roles are mapped to permissions in code or via a junction table. We'll use a string array for simplicity in PG or a junction model.
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([role, permissionId])
+}
+
+// ==========================================
+// 2. Learning & Content Management
+// ==========================================
+
+model Subject {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  topics      Topic[]
+  questions   Question[]
+}
+
+model Topic {
+  id           String        @id @default(uuid())
+  name         String
+  subjectId    String
+  subject      Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  chapters     Chapter[]
+  questions    Question[]
+  weakTopics   WeakTopic[]
+  strongTopics StrongTopic[]
+}
+
+model Chapter {
+  id         String      @id @default(uuid())
+  title      String
+  content    String? // Rich text or markdown
+  topicId    String
+  topic      Topic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  order      Int         @default(0)
+  notes      Note[]
+  flashcards Flashcard[]
+}
+
+// ==========================================
+// 3. Question Bank
+// ==========================================
+
+enum QuestionType {
+  MCQ
+  MSQ
+  TRUE_FALSE
+  FILL_IN_BLANK
+  MATCHING
+  SHORT_ANSWER
+  LONG_ANSWER
+  CODING
+  IMAGE_BASED
+  CASE_STUDY
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Question {
+  id          String       @id @default(uuid())
+  type        QuestionType
+  text        String // Support markdown/LaTeX
+  explanation String?
+  difficulty  Difficulty   @default(MEDIUM)
+  marks       Int          @default(1)
+  timeLimit   Int? // in seconds
+  tags        String? // comma-separated tags
+  bloomLevel  String? // e.g., "Knowledge", "Comprehension", "Analysis"
+  isActive    Boolean      @default(true)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  topicId   String?
+  topic     Topic?  @relation(fields: [topicId], references: [id])
+
+  options       Option[]
+  examQuestions ExamQuestion[]
+  bookmarks     Bookmark[]
+
+  // For coding questions
+  testCases String? // JSON representation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Option {
+  id         String   @id @default(uuid())
+  text       String
+  isCorrect  Boolean  @default(false)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// 4. Online Examination Module
+// ==========================================
+
+model Exam {
+  id              String  @id @default(uuid())
+  title           String
+  description     String?
+  duration        Int // in minutes
+  passingMarks    Int
+  totalMarks      Int
+  negativeMarking Float   @default(0)
+  randomize       Boolean @default(false)
+  proctoringLevel String  @default("STANDARD") // NONE, STANDARD, STRICT
+
+  creatorId String
+  creator   User   @relation("FacultyExams", fields: [creatorId], references: [id])
+
+  questions ExamQuestion[]
+  schedules ExamSchedule[]
+  results   Result[]
+  attempts  ExamAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamQuestion {
+  id         String   @id @default(uuid())
+  examId     String
+  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int      @default(0)
+
+  @@unique([examId, questionId])
+}
+
+model ExamSchedule {
+  id        String   @id @default(uuid())
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  isStrict  Boolean  @default(true) // If strict, cannot be started after startTime
+}
+
+model ExamAttempt {
+  id        String @id @default(uuid())
+  examId    String
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  status    String // IN_PROGRESS, SUBMITTED, AUTO_SUBMITTED, ABORTED
+  startTime DateTime  @default(now())
+  endTime   DateTime?
+
+  answers StudentAnswer[]
+}
+
+model StudentAnswer {
+  id         String      @id @default(uuid())
+  attemptId  String
+  attempt    ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+
+  // We just store stringified answer or option ID
+  answer       String
+  isCorrect    Boolean? // Null if pending manual/AI evaluation
+  marksAwarded Float?
+  timeTaken    Int // in seconds
+
+  resultId String?
+  result   Result? @relation(fields: [resultId], references: [id])
+}
+
+model Result {
+  id        String @id @default(uuid())
+  studentId String
+  student   User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examId    String
+  exam      Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  score      Float
+  percentage Float
+  timeTaken  Int // in seconds
+  status     String // PASSED, FAILED
+  aiFeedback String?
+
+  answers StudentAnswer[]
+
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 5. AI Tracking & Gamification
+// ==========================================
+
+model AIRecommendation {
+  id              String   @id @default(uuid())
+  studentId       String
+  recommendedData String // JSON containing question IDs or topics
+  reason          String?
+  createdAt       DateTime @default(now())
+}
+
+model LearningHistory {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activity  String // e.g., "WATCHED_VIDEO", "TOOK_PRACTICE_TEST"
+  timeSpent Int // seconds
+  createdAt DateTime @default(now())
+}
+
+model WeakTopic {
+  id        String @id @default(uuid())
+  studentId String
+  topicId   String
+  topic     Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  severity  Int // 1-10
+}
+
+model StrongTopic {
+  id        String @id @default(uuid())
+  studentId String
+  topicId   String
+  topic     Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  mastery   Int // 1-10
+}
+
+model Bookmark {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  studentId String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id])
+  isAI      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Flashcard {
+  id        String   @id @default(uuid())
+  front     String
+  back      String
+  chapterId String?
+  chapter   Chapter? @relation(fields: [chapterId], references: [id])
+  isAI      Boolean  @default(false)
+}
+
+model Assignment {
+  id      String   @id @default(uuid())
+  title   String
+  dueDate DateTime
+  content String
+}
+
+model Badge {
+  id          String      @id @default(uuid())
+  name        String
+  icon        String
+  description String
+  users       UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now())
+}
+
+model Certificate {
+  id       String   @id @default(uuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String
+  pdfUrl   String?
+  issuedAt DateTime @default(now())
+}
+
+model XPHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// 6. System Logs, Proctoring & Communication
+// ==========================================
+
+model ProctoringLog {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examId     String
+  violation  String // "TAB_SWITCH", "NO_FACE", "MULTIPLE_FACES", "MOBILE_DETECTED"
+  riskScore  Int      @default(0)
+  timestamp  DateTime @default(now())
+  screenshot String? // URL to object storage
+}
+
+model CameraSnapshot {
+  id        String   @id @default(uuid())
+  examId    String
+  studentId String
+  imageUrl  String
+  timestamp DateTime @default(now())
+}
+
+model AudioLog {
+  id            String   @id @default(uuid())
+  examId        String
+  studentId     String
+  audioUrl      String
+  transcription String?
+  timestamp     DateTime @default(now())
+}
+
+model DeviceHistory {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceType String
+  ipAddress  String
+  lastSeen   DateTime @default(now())
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String
+  userAgent String?
+  status    String // SUCCESS, FAILED
+  timestamp DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation("UserAuditLogs", fields: [userId], references: [id])
+  action    String
+  details   String? // JSON
+  timestamp DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String
+  sender     User     @relation("MessagesSent", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User     @relation("MessagesReceived", fields: [receiverId], references: [id])
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String
+  message   String
+  rating    Int?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id          String  @id @default(uuid())
+  key         String  @unique
+  value       String
+  description String?
+}
