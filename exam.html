@@ -86,6 +86,10 @@
     /* --- Quiz Screen --- */
     #quiz-screen { display: none; }
 
+    .quiz-layout {
+      position: relative;
+    }
+
     .meta-row {
       display: flex;
       justify-content: space-between;
@@ -206,6 +210,141 @@
     }
 
     .next-btn:hover { background: #6366f120; }
+
+    /* --- Proctoring Webcam Panel --- */
+    .proctoring-panel {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      display: none;
+    }
+
+    .webcam-container {
+      position: relative;
+      width: 200px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #2a2d3a;
+      background: #0f1117;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .webcam-container video {
+      width: 100%;
+      display: block;
+      transform: scaleX(-1);
+    }
+
+    .webcam-status {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #22c55e;
+    }
+
+    .webcam-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .webcam-status.warning {
+      color: #f59e0b;
+    }
+    .webcam-status.warning .dot {
+      background: #f59e0b;
+    }
+
+    .webcam-status.danger {
+      color: #ef4444;
+    }
+    .webcam-status.danger .dot {
+      background: #ef4444;
+      animation: pulse-dot 0.5s infinite;
+    }
+
+    /* --- Violation Toasts --- */
+    .violation-toast-container {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .violation-toast {
+      background: rgba(239, 68, 68, 0.95);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: toast-in 0.3s ease-out, toast-out 0.3s ease-in 2.7s forwards;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+    }
+
+    .violation-toast.medium {
+      background: rgba(245, 158, 11, 0.95);
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+    }
+
+    .violation-toast.low {
+      background: rgba(99, 102, 241, 0.95);
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes toast-out {
+      from { opacity: 1; }
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+
+    /* Violation counter badge on webcam */
+    .violation-counter {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: #ef4444;
+      color: white;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0 6px;
+      display: none;
+    }
 
     /* --- Report Screen --- */
     #report-screen { display: none; }
@@ -330,6 +469,73 @@
       font-size: 14px;
       margin-top: 8px;
     }
+
+    /* --- Proctoring Report Section --- */
+    .proctoring-report {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid #2a2d3a;
+    }
+
+    .proctoring-report .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .proctoring-summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .proctor-stat {
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .proctor-stat .ps-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .proctor-stat .ps-label {
+      font-size: 11px;
+      color: #8b8fa8;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .proctor-stat.clean .ps-value { color: #22c55e; }
+    .proctor-stat.warn .ps-value { color: #f59e0b; }
+    .proctor-stat.danger .ps-value { color: #ef4444; }
+
+    .violation-breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #0f1117;
+      border: 1px solid #2a2d3a;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+
+    .violation-breakdown-item .vb-type {
+      color: #e8e8e8;
+      text-transform: capitalize;
+    }
+
+    .violation-breakdown-item .vb-count {
+      color: #ef4444;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -338,7 +544,7 @@
   <!-- START SCREEN -->
   <div id="start-screen">
     <h1>Adaptive Assessment</h1>
-    <p>Questions adapt to your level as you go. Answer carefully.</p>
+    <p>Questions adapt to your level as you go. Answer carefully. Your session will be proctored via webcam.</p>
 
     <label for="domain-select">Select Domain</label>
     <select id="domain-select">
@@ -358,28 +564,30 @@
 
   <!-- QUIZ SCREEN -->
   <div id="quiz-screen">
-    <div class="meta-row">
-      <span class="band-badge" id="band-label">Intermediate</span>
-      <span class="score-label" id="score-counter">0 / 0</span>
+    <div class="quiz-layout">
+      <div class="meta-row">
+        <span class="band-badge" id="band-label">Intermediate</span>
+        <span class="score-label" id="score-counter">0 / 0 correct</span>
+      </div>
+
+      <div class="question-text" id="question-text">Loading...</div>
+
+      <div class="options-grid" id="options-grid"></div>
+
+      <div class="feedback-row" id="feedback-row">
+        <span id="feedback-text"></span>
+      </div>
+
+      <button class="next-btn" id="next-btn" onclick="loadNextQuestion()">
+        Next Question →
+      </button>
+
+      <button class="btn-primary" id="finish-btn"
+        style="display:none; margin-top:12px; background:#22c55e"
+        onclick="finishTest()">
+        Finish &amp; See Report
+      </button>
     </div>
-
-    <div class="question-text" id="question-text">Loading...</div>
-
-    <div class="options-grid" id="options-grid"></div>
-
-    <div class="feedback-row" id="feedback-row">
-      <span id="feedback-text"></span>
-    </div>
-
-    <button class="next-btn" id="next-btn" onclick="loadNextQuestion()">
-      Next Question →
-    </button>
-
-    <button class="btn-primary" id="finish-btn"
-      style="display:none; margin-top:12px; background:#22c55e"
-      onclick="finishTest()">
-      Finish & See Report
-    </button>
   </div>
 
   <!-- REPORT SCREEN -->
@@ -414,6 +622,13 @@
     <div class="section-title">Topic Breakdown</div>
     <div id="topic-breakdown"></div>
 
+    <!-- Proctoring Report Section -->
+    <div class="proctoring-report" id="proctoring-report" style="display:none">
+      <div class="section-title">🛡️ Proctoring Summary</div>
+      <div class="proctoring-summary-grid" id="proctoring-summary-grid"></div>
+      <div id="violation-breakdown"></div>
+    </div>
+
     <button class="btn-primary" style="margin-top:28px" onclick="location.reload()">
       Take Another Test
     </button>
@@ -421,46 +636,106 @@
 
 </div>
 
+<!-- Proctoring Webcam Panel (fixed position, top-right) -->
+<div class="proctoring-panel" id="proctoring-panel">
+  <div class="webcam-container">
+    <video id="webcam-video" autoplay playsinline muted></video>
+    <div class="webcam-status" id="webcam-status">
+      <span class="dot"></span>
+      <span>PROCTORING</span>
+    </div>
+    <div class="violation-counter" id="violation-counter">0</div>
+  </div>
+</div>
+
+<!-- Hidden canvas for frame capture -->
+<canvas id="capture-canvas" style="display:none"></canvas>
+
+<!-- Violation Toast Container -->
+<div class="violation-toast-container" id="toast-container"></div>
+
 <script>
   const API = "http://127.0.0.1:8000";  // change this to your ngrok URL when sharing
 
-  let sessionId = null;
+  // --- Exam State ---
+  let userEmail = null;
   let currentQuestion = null;
   let totalAnswered = 0;
   let totalCorrect = 0;
-  let pendingNext = null;  // next question returned from submit_answer
+  let pendingNext = null;
   let questionCount = 0;
   const MAX_QUESTIONS = 10;
 
+  // --- Proctoring State ---
+  let proctoringSessionId = null;
+  let webcamStream = null;
+  let frameInterval = null;
+  let totalViolations = 0;
+  let proctoringData = null;  // store end-proctoring response
+
+  // ===================== EXAM FUNCTIONS =====================
+
   async function startTest() {
     const domain = document.getElementById("domain-select").value;
-    const name = document.getElementById("name-input").value.trim() || "student";
+    const name = document.getElementById("name-input").value.trim();
     document.getElementById("start-error").textContent = "";
 
+    if (!name) {
+      document.getElementById("start-error").textContent = "Please enter your name or student ID.";
+      return;
+    }
+
+    // Use the name as the email/identifier for session tracking
+    const email = name;
+
     try {
+      // Step 1: Request webcam access for proctoring
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240, facingMode: "user" }
+        });
+        const videoEl = document.getElementById("webcam-video");
+        videoEl.srcObject = webcamStream;
+      } catch (camErr) {
+        document.getElementById("start-error").textContent =
+          "Camera access is required for proctored assessment. Please allow camera access and try again.";
+        return;
+      }
+
+      // Step 2: Start the exam session
       const res = await fetch(`${API}/start_test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, start_band: "Intermediate" })
+        body: JSON.stringify({ email: email, domain, start_band: "Intermediate" })
       });
 
       if (!res.ok) {
         const err = await res.json();
         document.getElementById("start-error").textContent = err.detail || "Failed to start test.";
+        stopWebcam();
         return;
       }
 
       const data = await res.json();
-      sessionId = data.session_id;
+      userEmail = data.email;
       currentQuestion = data.question;
       questionCount = 1;
 
+      // Step 3: Start proctoring session
+      await startProctoring(userEmail);
+
+      // Step 4: Show quiz screen and proctoring panel
       document.getElementById("start-screen").style.display = "none";
       document.getElementById("quiz-screen").style.display = "block";
+      document.getElementById("proctoring-panel").style.display = "block";
       renderQuestion(currentQuestion);
+
+      // Step 5: Start periodic frame capture
+      startFrameCapture();
 
     } catch (e) {
       document.getElementById("start-error").textContent = "Cannot connect to API. Is the server running?";
+      stopWebcam();
     }
   }
 
@@ -496,7 +771,7 @@
       const res = await fetch(`${API}/submit_answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, answer: letter })
+        body: JSON.stringify({ email: userEmail, answer: letter })
       });
 
       const data = await res.json();
@@ -546,13 +821,19 @@
   }
 
   async function finishTest() {
+    // Stop proctoring first
+    stopFrameCapture();
+    const procReport = await endProctoring();
+    stopWebcam();
+
     document.getElementById("quiz-screen").style.display = "none";
+    document.getElementById("proctoring-panel").style.display = "none";
     document.getElementById("report-screen").style.display = "block";
     document.getElementById("topic-breakdown").innerHTML =
       '<div class="loading">Generating report...</div>';
 
     try {
-      const res = await fetch(`${API}/get_report/${sessionId}`);
+      const res = await fetch(`${API}/get_report/${userEmail}`);
       const data = await res.json();
 
       document.getElementById("report-score").textContent = `${data.score_percent}%`;
@@ -575,6 +856,231 @@
     } catch (e) {
       document.getElementById("topic-breakdown").innerHTML =
         '<div class="error-msg">Could not load report. Try again.</div>';
+    }
+
+    // Render proctoring report
+    renderProctoringReport(procReport);
+  }
+
+  // ===================== PROCTORING FUNCTIONS =====================
+
+  async function startProctoring(sessionId) {
+    try {
+      const res = await fetch(`${API}/proctoring/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+      const data = await res.json();
+      proctoringSessionId = data.proctoring_session_id;
+      console.log("Proctoring started:", proctoringSessionId);
+    } catch (e) {
+      console.error("Failed to start proctoring:", e);
+    }
+  }
+
+  async function endProctoring() {
+    if (!proctoringSessionId) return null;
+
+    try {
+      const res = await fetch(`${API}/proctoring/end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proctoring_session_id: proctoringSessionId })
+      });
+      const data = await res.json();
+      proctoringData = data;
+      console.log("Proctoring ended:", data);
+      return data;
+    } catch (e) {
+      console.error("Failed to end proctoring:", e);
+      return null;
+    }
+  }
+
+  function startFrameCapture() {
+    // Capture and send a frame every 2 seconds
+    frameInterval = setInterval(captureAndSendFrame, 2000);
+  }
+
+  function stopFrameCapture() {
+    if (frameInterval) {
+      clearInterval(frameInterval);
+      frameInterval = null;
+    }
+  }
+
+  async function captureAndSendFrame() {
+    if (!proctoringSessionId || !webcamStream) return;
+
+    const video = document.getElementById("webcam-video");
+    const canvas = document.getElementById("capture-canvas");
+
+    // Wait for video to be ready
+    if (video.readyState < 2) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0);
+
+    // Convert to base64 JPEG
+    const frameData = canvas.toDataURL("image/jpeg", 0.7);
+
+    try {
+      const res = await fetch(`${API}/proctoring/process_frame`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proctoring_session_id: proctoringSessionId,
+          frame_data: frameData
+        })
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      // Update webcam status indicator
+      updateWebcamStatus(data);
+
+      // Show violation toasts
+      if (data.has_violations) {
+        for (const v of data.violations) {
+          totalViolations++;
+          showViolationToast(v);
+        }
+        updateViolationCounter();
+      }
+
+    } catch (e) {
+      console.error("Frame processing error:", e);
+    }
+  }
+
+  function updateWebcamStatus(data) {
+    const statusEl = document.getElementById("webcam-status");
+    if (data.has_violations) {
+      const hasHigh = data.violations.some(v => v.severity === "high");
+      if (hasHigh) {
+        statusEl.className = "webcam-status danger";
+        statusEl.querySelector("span:last-child").textContent = "VIOLATION";
+      } else {
+        statusEl.className = "webcam-status warning";
+        statusEl.querySelector("span:last-child").textContent = "WARNING";
+      }
+      // Reset to normal after 3 seconds
+      setTimeout(() => {
+        statusEl.className = "webcam-status";
+        statusEl.querySelector("span:last-child").textContent = "PROCTORING";
+      }, 3000);
+    }
+  }
+
+  function updateViolationCounter() {
+    const counter = document.getElementById("violation-counter");
+    counter.textContent = totalViolations;
+    counter.style.display = totalViolations > 0 ? "flex" : "none";
+  }
+
+  function showViolationToast(violation) {
+    const container = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+
+    const severityClass = violation.severity === "high" ? "" :
+                          violation.severity === "medium" ? "medium" : "low";
+    toast.className = `violation-toast ${severityClass}`;
+
+    const icon = violation.severity === "high" ? "🚨" :
+                 violation.severity === "medium" ? "⚠️" : "ℹ️";
+
+    const label = getViolationLabel(violation.type);
+    toast.innerHTML = `${icon} ${label}`;
+
+    container.appendChild(toast);
+
+    // Remove after animation completes
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 3200);
+  }
+
+  function getViolationLabel(type) {
+    const labels = {
+      "prohibited_object": "Prohibited object detected",
+      "multiple_faces": "Multiple faces detected",
+      "no_face": "No face detected — stay in frame",
+      "gaze_away": "Looking away from screen",
+      "lip_movement": "Lip movement detected",
+      "speech_detected": "Speech detected"
+    };
+    return labels[type] || type;
+  }
+
+  function stopWebcam() {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(track => track.stop());
+      webcamStream = null;
+    }
+  }
+
+  function renderProctoringReport(report) {
+    const section = document.getElementById("proctoring-report");
+    if (!report) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "block";
+
+    const totalViolationsCount = report.total_violations || 0;
+    const framesProcessed = report.total_frames || 0;
+    const violationTypes = Object.keys(report.violation_counts || {}).length;
+
+    // Determine severity level for display
+    let severityClass = "clean";
+    let integrityLabel = "Clean";
+    if (totalViolationsCount > 20) {
+      severityClass = "danger";
+      integrityLabel = "High Risk";
+    } else if (totalViolationsCount > 5) {
+      severityClass = "warn";
+      integrityLabel = "Moderate";
+    }
+
+    const summaryGrid = document.getElementById("proctoring-summary-grid");
+    summaryGrid.innerHTML = `
+      <div class="proctor-stat ${severityClass}">
+        <div class="ps-value">${integrityLabel}</div>
+        <div class="ps-label">Integrity</div>
+      </div>
+      <div class="proctor-stat ${totalViolationsCount > 0 ? 'warn' : 'clean'}">
+        <div class="ps-value">${totalViolationsCount}</div>
+        <div class="ps-label">Violations</div>
+      </div>
+      <div class="proctor-stat">
+        <div class="ps-value">${framesProcessed}</div>
+        <div class="ps-label">Frames Analyzed</div>
+      </div>
+    `;
+
+    const breakdownDiv = document.getElementById("violation-breakdown");
+    breakdownDiv.innerHTML = "";
+
+    if (report.violation_counts && Object.keys(report.violation_counts).length > 0) {
+      for (const [type, count] of Object.entries(report.violation_counts)) {
+        breakdownDiv.innerHTML += `
+          <div class="violation-breakdown-item">
+            <span class="vb-type">${getViolationLabel(type)}</span>
+            <span class="vb-count">${count}</span>
+          </div>`;
+      }
+    } else {
+      breakdownDiv.innerHTML = `
+        <div style="text-align:center; color:#22c55e; padding:12px; font-size:14px;">
+          ✓ No violations detected during this session
+        </div>`;
     }
   }
 </script>

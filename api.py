@@ -135,6 +135,10 @@ class FrameResponse(BaseModel):
     speech_detected: bool = False
 
 
+class EndProctoringRequest(BaseModel):
+    proctoring_session_id: str
+
+
 class EndProctoringResponse(BaseModel):
     proctoring_session_id: str
     total_frames: int
@@ -314,11 +318,20 @@ def process_frame(request: FrameRequest):
         # Convert violations to API response format
         api_violations = []
         for violation in current_violations:
+            # Convert numpy arrays and other non-serializable types to plain Python
+            safe_details = {}
+            for k, v in violation.items():
+                if k in ["type", "severity", "timestamp"]:
+                    continue
+                if hasattr(v, 'tolist'):  # numpy array
+                    safe_details[k] = v.tolist()
+                else:
+                    safe_details[k] = v
             api_violations.append(Violation(
                 type=violation["type"],
                 severity=violation["severity"],
                 timestamp=violation["timestamp"],
-                details={k: v for k, v in violation.items() if k not in ["type", "severity", "timestamp"]}
+                details=safe_details
             ))
         
         return FrameResponse(
@@ -336,8 +349,9 @@ def process_frame(request: FrameRequest):
 
 
 @app.post("/proctoring/end", response_model=EndProctoringResponse)
-def end_proctoring(proctoring_session_id: str):
+def end_proctoring(request: EndProctoringRequest):
     """End a proctoring session and return violation report"""
+    proctoring_session_id = request.proctoring_session_id
     session = PROCTORING_SESSIONS.get(proctoring_session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Proctoring session not found")
